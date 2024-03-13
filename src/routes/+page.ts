@@ -1,7 +1,7 @@
 import type { PageLoad } from './$types';
 
-export const load: PageLoad = async () => {
+export const load: PageLoad = async ({ fetch }) => {
     return {
-        word: await (await fetch("https://random-word-api.herokuapp.com/word")).json()
+        word: String((await (await fetch("https://random-word-api.herokuapp.com/word")).json())[0])
     };
 };
