@@ -1,6 +1,12 @@
 <script lang="ts">
-    import { invalidateAll } from "$app/navigation";
+    import { confetti } from "@tsparticles/confetti";
+    import { goto, invalidateAll } from "$app/navigation";
     import type { PageData } from "./$types";
+    import MouseAndCheese from "$lib/components/mouseAndCheese.svelte";
+    import { calculateScore } from "$lib/score";
+
+    let sezuires = false;
+
     // Fetch a random word
     export let data: PageData;
     $: word = data.word.toUpperCase();
@@ -13,9 +19,10 @@
     $: totalAttempts = uniqueLength + 1 + Math.floor(Math.random() * 3 - 1);
     let startTime = new Date();
     let shownTime = "";
+    let finalTime = new Date();
 
     setInterval(() => {
-        if (failed) return;
+        if (finished) return;
         let currentTime = new Date();
         let timeDiff = currentTime.getTime() - startTime.getTime();
         let seconds = Math.floor(timeDiff / 1000);
@@ -24,23 +31,59 @@
             minimumIntegerDigits: 2,
             useGrouping: false,
         });
+        finalTime = new Date(timeDiff);
         seconds = seconds % 60;
         shownTime = `${minutes}:${formattedSeconds}`;
     }, 100);
 
-    // Active state variables
     let attempts = 0;
+    // Active state variables
+    $: if (totalAttempts) attempts = 0;
     $: failed = attempts >= totalAttempts;
     $: visibleWord = Array(length).fill("_");
+    $: console.log(visibleWord, length);
+    $: finished = visibleWord.join("") === word;
 
-    let alphabetContainer: HTMLDivElement | undefined;
+    let help_modal: HTMLDialogElement | undefined = undefined;
+    let finished_modal: HTMLDialogElement | undefined = undefined;
     $: if (failed) {
         visibleWord = letterArr;
-        alphabetContainer?.classList.add(
-            "stripes",
-            "stripes-sm",
-            "stripes-red-500",
-        );
+    }
+    $: if (finished) {
+        // Show modal
+        finished_modal?.showModal();
+
+        // Pause the timer
+
+        // If failed, make the confetti rain down a bunch of thumbs down
+        const confettiSettings = failed
+            ? {
+                  particleCount: 150,
+                  spread: 120,
+                  angle: 90,
+                  origin: {
+                      y: 0.5,
+                  },
+                  scalar: 4,
+                  ticks: 100,
+                  shapes: ["emoji"],
+                  shapeOptions: {
+                      emoji: {
+                          value: ["👎", "💩"],
+                      },
+                  },
+              }
+            : {
+                  particleCount: 250,
+                  spread: 120,
+                  angle: 90,
+                  origin: {
+                      y: 0.5,
+                  },
+                  scalar: 2,
+                  ticks: 100,
+              };
+        !sezuires ? confetti(confettiSettings) : null;
     }
 
     // This should always be... u know... the alphabet...
@@ -135,7 +178,95 @@
         // Add the class btn-disabled
         if (button) button.classList.add("btn-disabled");
     };
+
+    const disableSezuires = (e: Event) => {
+        const target = e.currentTarget as HTMLInputElement;
+        if (!target) return;
+        sezuires = target.checked;
+    };
 </script>
+
+<dialog id="finished_modal" class="modal" bind:this={finished_modal}>
+    <div class="modal-box">
+        <h3 class="font-bold text-lg">
+            {failed ? "Oh no! You failed!" : "Success!"}
+        </h3>
+        <span class="py-4 text-center">
+            <div>
+                {failed
+                    ? "You've run out of attempts. Better luck next time! Don't worry though, the mouse is happy!"
+                    : `You've successfully completed the word, with ${totalAttempts - attempts} attempts left!`}
+            </div>
+            <div>Time Taken: {shownTime}</div>
+            <div>
+                Total Score: {calculateScore(
+                    length,
+                    attempts,
+                    totalAttempts,
+                    finalTime.getSeconds(),
+                )}
+            </div>
+            <div>The word was: {word}</div>
+        </span>
+        <div class="modal-action">
+            <div class="join p-2">
+                <button
+                    class="btn min-w-24 btn-warning join-item"
+                    on:click={() => {
+                        // Click the other reset button id = restart
+                        let button = document.getElementById("restart");
+                        if (button) button.click();
+
+                        // Hide modal
+                        finished_modal?.close();
+                    }}><span>Restart</span></button
+                >
+                <button class="btn min-w-24 btn-error join-item">Exit</button>
+            </div>
+        </div>
+    </div>
+</dialog>
+
+<dialog class="modal" id="help_modal" bind:this={help_modal}>
+    <div class="modal-box">
+        <h3 class="font-bold text-lg">Help Page</h3>
+        <div>
+            <h3 class="font-semibold">How to play</h3>
+            <span
+                >To play, type via your keyboard, or use the onscreen keyboard
+                to try and guess what the word is, before the mouse gets to it.</span
+            >
+        </div>
+        <div>
+            <h3>
+                <span class="font-semibold">Settings</span>
+                <span
+                    class="text-xs text-info tooltip tooltip-top"
+                    data-tip="These settings do not save between play sessions."
+                    >(Not persistent)</span
+                >
+            </h3>
+            <div class="form-control">
+                <label class="label cursor-pointer">
+                    <input
+                        class="checkbox"
+                        type="checkbox"
+                        name="sezuire"
+                        id="Sezuires"
+                        on:change={disableSezuires}
+                    />
+                    <span>Disable Sezuires</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    <form
+        method="dialog"
+        class="modal-backdrop backdrop-blur-lg transition-all"
+    >
+        <button>Close</button>
+    </form>
+</dialog>
 
 <div
     class="flex h-full w-full flex-col items-center pt-8 outline-none cursor-auto"
@@ -143,14 +274,12 @@
     on:keydown={eventPressLetter}
     role="button"
 >
-    <div class="h-1/3 border text-center italic">
-        This would be where a mouse would be, trapped within a maze. Due to
-        budget cuts, the design team were unable to get the mouse in a maze.
+    <div class="h-1/3 w-5/6 border">
+        <MouseAndCheese {attempts} {totalAttempts} />
     </div>
     <div class="w-full text-center text-6xl">{visibleWord.join(" ")}</div>
     <div
         class="flex w-5/6 flex-wrap justify-center gap-2 mt-8 py-2 text-center text-4xl border"
-        bind:this={alphabetContainer}
     >
         {#each alphabet as letter}
             <button
@@ -169,6 +298,7 @@
     </div>
     <div class="join p-12">
         <button
+            id="restart"
             class="btn btn-wide btn-warning join-item"
             on:click={(e) => {
                 // Turn self into spinner
@@ -180,9 +310,26 @@
                     target.classList.remove("loading", "loading-infinity");
                     // Reset clock
                     startTime = new Date();
+                    // Reset all the letters
+                    alphabet.forEach((letter) => {
+                        let button = document.getElementById(
+                            `letter-${letter}`,
+                        );
+                        if (button) button.classList.remove("btn-disabled");
+                    });
                 });
             }}><span>Restart</span></button
         >
-        <button class="btn btn-wide btn-error join-item">Exit</button>
+        <a
+            class="btn btn-wide btn-error join-item"
+            href="https://www.google.com">Exit</a
+        >
+    </div>
+    <div class="self-start absolute bottom-16">
+        <button
+            class="btn btn-circle btn-sm btn-info tooltip tooltip-right"
+            data-tip="Help"
+            on:click={() => help_modal?.showModal()}>?</button
+        >
     </div>
 </div>

@@ -1,5 +1,8 @@
 <script>
     import "../app.css";
+
+    export const ssr = false;
+    export const csr = true;
 </script>
 
 <div class="w-[100vw] h-[100vh] p-16 flex place-content-center">

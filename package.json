@@ -25,6 +25,8 @@
 	},
 	"type": "module",
 	"dependencies": {
-		"@designbycode/tailwindcss-stripes": "^1.0.5"
+		"@tsparticles/confetti": "^3.3.0",
+		"@tsparticles/slim": "^3.3.0",
+		"@tsparticles/svelte": "^3.0.0"
 	}
 }

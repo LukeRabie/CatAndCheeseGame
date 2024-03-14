@@ -7,6 +7,6 @@ export default {
   daisyui: {
     themes: ["luxury"],
   },
-  plugins: [require("daisyui"), require("@designbycode/tailwindcss-stripes")],
+  plugins: [require("daisyui")],
 }
 
